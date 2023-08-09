@@ -2,9 +2,9 @@ use std::{collections::HashSet, ops::Range, option::IterMut, path::Iter};
 
 use super::lit::Lit;
 use anyhow::{bail, Result};
-#[derive(Clone, Default,Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct CnfFormula {
-    lit_count: usize,
+    max_lit_index: usize,
     literals: Vec<Lit>,
     clause_ranges: Vec<Range<usize>>,
 }
@@ -34,21 +34,20 @@ impl CnfFormula {
             }
             if !check.contains(ele) {
                 check.insert(*ele);
-                self.lit_count = ele.index().max(self.lit_count);
+                self.max_lit_index = ele.index().max(self.max_lit_index);
                 res.push(*ele);
             }
         }
         Ok(res)
     }
     #[inline]
-    pub(super) fn get_lit_count(&self) -> usize {
-        self.lit_count+1
+    pub(super) fn get_max_lit_index(&self) -> usize {
+        self.max_lit_index
     }
 }
 #[cfg(test)]
 mod tests {
     // use crate::sat::lit::Lit;
-    
 
     use crate::lit::Lit;
 

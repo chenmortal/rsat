@@ -1,11 +1,16 @@
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
+mod assign;
 mod cnf;
+mod db;
 mod error;
+mod graph;
 mod lit;
 mod solver;
-mod test;
+// mod test;
+mod prop;
+mod watch;
 #[cfg(test)]
 mod tests {
     use super::*;
