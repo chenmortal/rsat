@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Range, option::IterMut, path::Iter};
+use std::{collections::HashSet, ops::Range};
 
 use super::lit::Lit;
 use anyhow::{bail, Result};
@@ -43,30 +43,5 @@ impl CnfFormula {
     #[inline]
     pub(super) fn get_max_lit_index(&self) -> usize {
         self.max_lit_index
-    }
-}
-#[cfg(test)]
-mod tests {
-    // use crate::sat::lit::Lit;
-
-    use crate::lit::Lit;
-
-    use super::CnfFormula;
-
-    #[test]
-    fn test_add_clause() {
-        let mut formula = CnfFormula::default();
-        let a = Lit::from_dimacs(1);
-        let b = Lit::from_dimacs(2);
-        let c = Lit::from_dimacs(3);
-        formula.add_clause(&[a, a, b]);
-        formula.add_clause(&[b, c]);
-        formula.add_clause(&[!a, b]);
-        formula.add_clause(&[a, !a]);
-        let mut formula_iter = formula.iter();
-        assert_eq!(formula_iter.next(), Some([a, b].as_ref()));
-        assert_eq!(formula_iter.next(), Some([b, c].as_ref()));
-        assert_eq!(formula_iter.next(), Some([!a, b].as_ref()));
-        assert_eq!(formula_iter.next(), None);
     }
 }

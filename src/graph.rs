@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use crate::{lit::Lit, solver::ClauseRef};
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum PropReason {

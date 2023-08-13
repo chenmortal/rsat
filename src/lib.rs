@@ -2,13 +2,15 @@ pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 mod assign;
-mod cnf;
+pub mod cnf;
 mod db;
-mod error;
+// mod error;
 mod graph;
-mod lit;
-mod solver;
+pub mod lit;
+pub mod solver;
 // mod test;
+mod cdcl;
+mod decision;
 mod prop;
 mod watch;
 #[cfg(test)]

@@ -1,4 +1,10 @@
-use crate::{lit::Lit, solver::Solver};
+use crate::{
+    cdcl::Conflict,
+    graph::PropReason,
+    lit::Lit,
+    solver::{ClauseRef, Solver},
+    watch::Watch,
+};
 use anyhow::Result;
 #[derive(Debug, Default)]
 pub(crate) struct PropQueue {
@@ -41,17 +47,101 @@ impl From<&[Lit]> for PropQueue {
 }
 
 impl Solver {
-    pub(crate) fn propagate(&mut self) -> Result<()> {
+    pub(crate) fn propagate(&mut self) -> Result<(), Conflict> {
         while let Some(lit) = self.prop_queue.pop_queue() {
-            self.prop_binary(lit)?;
-            self.prop_long(lit)?;
+            let mut watch_list = self.watch_lists.pop_watch_list(lit);
+            let mut i = 0;
+            'watch: loop {
+                if i == watch_list.len() {
+                    break;
+                }
+                let watch = watch_list.get_mut(i).unwrap();
+                i += 1;
+                match watch.cref {
+                    ClauseRef::Binary(_) => match self.assignment.value(&watch.blocking) {
+                        Some(false) => {
+                            return Err(Conflict::Binary([!lit, watch.blocking]));
+                        }
+                        None => {
+                            self.add_assign(&watch.blocking, PropReason::Binary([!lit]));
+                        }
+                        Some(true) => {}
+                    },
+                    ClauseRef::Long(index) => {
+                        if self.assignment.is_true(&watch.blocking) {
+                            continue;
+                        }
+                        let clause = &mut self.clause_db.long_clauses[index];
+
+                        if clause[0] == !lit {
+                            clause.swap(0, 1);
+                        }
+                        let new_watch = Watch::new(watch.cref, clause[0]);
+                        if clause[0] != watch.blocking && self.assignment.is_true(&clause[0]) {
+                            *watch = new_watch;
+                            continue;
+                        }
+                        for lit_index in 2..clause.len() {
+                            if !self.assignment.is_false(&clause[lit_index]) {
+                                clause.swap(1, lit_index);
+                                self.watch_lists.add_watch(!clause[1], new_watch);
+                                i -= 1;
+                                watch_list.remove(i);
+                                continue 'watch;
+                            }
+                        }
+                        if self.assignment.is_false(&clause[0]) {
+                            return Err(Conflict::Long(watch.cref));
+                        }
+                        let first = clause[0];
+                        self.add_assign(&first, PropReason::Long(watch.cref));
+                    }
+                }
+            }
+            'watch: for i in 0..watch_list.len() {
+                let watch = watch_list.get_mut(i).unwrap();
+                match watch.cref {
+                    ClauseRef::Binary(_) => match self.assignment.value(&watch.blocking) {
+                        Some(false) => {
+                            return Err(Conflict::Binary([!lit, watch.blocking]));
+                        }
+                        None => {
+                            self.add_assign(&watch.blocking, PropReason::Binary([!lit]));
+                        }
+                        Some(true) => {}
+                    },
+                    ClauseRef::Long(index) => {
+                        if self.assignment.is_true(&watch.blocking) {
+                            continue;
+                        }
+                        let clause = &mut self.clause_db.long_clauses[index];
+
+                        if clause[0] == !lit {
+                            clause.swap(0, 1);
+                        }
+                        let new_watch = Watch::new(watch.cref, clause[0]);
+                        if clause[0] != watch.blocking && self.assignment.is_true(&clause[0]) {
+                            *watch = new_watch;
+                            continue;
+                        }
+                        for lit_index in 2..clause.len() {
+                            if !self.assignment.is_false(&clause[lit_index]) {
+                                clause.swap(1, lit_index);
+                                self.watch_lists.add_watch(!clause[lit_index], new_watch);
+                                watch_list.remove(i);
+                                continue 'watch;
+                            }
+                        }
+                        if self.assignment.is_false(&clause[0]) {
+                            return Err(Conflict::Long(watch.cref));
+                        }
+                        let first = clause[0];
+                        self.add_assign(&first, PropReason::Long(watch.cref));
+                    }
+                }
+            }
+            self.watch_lists.set_watch_list(lit, watch_list);
         }
-        Ok(())
-    }
-    fn prop_binary(&self, lit: Lit) -> Result<()> {
-        Ok(())
-    }
-    fn prop_long(&self, lit: Lit) -> Result<()> {
         Ok(())
     }
 }

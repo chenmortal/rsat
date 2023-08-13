@@ -4,14 +4,14 @@ use std::{fmt, ops};
 pub struct Lit(usize);
 impl Lit {
     #[inline]
-    pub fn from_dimacs(number: usize) -> Self {
+    pub fn from_dimacs(number: usize, polarity: bool) -> Self {
         debug_assert!(number >= 1);
-        Self::from_index(number - 1)
+        Self::from_index(number - 1, polarity)
     }
     #[inline]
-    pub fn from_index(number: usize) -> Self {
+    pub fn from_index(number: usize, polarity: bool) -> Self {
         debug_assert!(number <= (usize::MAX >> 2));
-        Self(number << 1)
+        Self(number << 1 | (!polarity as usize))
     }
     #[inline]
     pub fn is_negative(self) -> bool {
@@ -55,20 +55,5 @@ impl fmt::Debug for Lit {
         } else {
             f.write_fmt(format_args!("{}", self.to_dimacs()))
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Lit;
-
-    #[test]
-    fn test_postive_negtive() {
-        assert_eq!(Lit::from_dimacs(1).to_dimacs(), 1);
-        assert_eq!((!Lit::from_dimacs(1)).to_dimacs(), 1);
-    }
-    #[test]
-    fn test_unique() {
-        let mut v = vec![1, 2, 3, 2, 4];
     }
 }

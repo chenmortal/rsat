@@ -20,13 +20,6 @@ impl Assignment {
         self.assignment.resize(var_count, None);
     }
     #[inline]
-    pub(crate) fn assign_bool(&self, lit: &Lit) -> Option<bool> {
-        match self.assignment[lit.index()] {
-            Some(assign) => Some(assign == lit.is_positive()),
-            None => None,
-        }
-    }
-    #[inline]
     pub(crate) fn value(&self, lit: &Lit) -> Option<bool> {
         match self.assignment[lit.index()] {
             Some(assign) => Some(assign == lit.is_positive()),

@@ -1,21 +1,14 @@
-use std::{cmp::Ordering, ops::Deref, os::fd::IntoRawFd, slice::Iter};
-
 use crate::{
     assign::Assignment,
-    db::{AssignClause, BinaryClause, ClauseDb, LongClause},
-    graph::PropGraph,
+    db::ClauseDb,
+    graph::{PropGraph, PropReason},
     prop::PropQueue,
     watch::Watchlists,
 };
 
 use super::cnf::CnfFormula;
-use super::error::Conflict;
-use super::lit::Lit;
-// use super::assign::Assignment;
-use anyhow::{bail, Result};
 
 #[derive(Debug, Clone, Copy)]
-// struct ClauseRef(usize);
 pub(super) enum ClauseRef {
     Binary(usize),
     Long(usize),
@@ -26,20 +19,44 @@ pub struct Solver {
     pub(crate) assignment: Assignment,
     pub(crate) clause_db: ClauseDb,
     max_lit_index: usize,
+    pub(crate) default_polarity: bool,
     pub(crate) watch_lists: Watchlists,
     pub(crate) prop_graph: PropGraph,
     pub(crate) prop_queue: PropQueue,
 }
 
 impl Solver {
-    pub fn add_formula(&mut self, formula: &CnfFormula) {
+    pub fn add_formula(mut self, formula: &CnfFormula) -> Self {
         self.max_lit_index = self.max_lit_index.max(formula.get_max_lit_index());
-        self.assignment.resize(self.max_lit_index);
-        self.watch_lists.resize(self.max_lit_index);
-        self.prop_graph.resize(self.max_lit_index);
+        let var_count = self.max_lit_index + 1;
+        self.assignment.resize(var_count);
+        self.watch_lists.resize(var_count);
+        self.prop_graph.resize(var_count);
         self.clause_db.add_formula(formula);
+        self
     }
-    pub fn solve(&mut self) {}
+    pub fn new(decision_default_polarity: bool) -> Self {
+        let mut solve = Solver::default();
+        solve.default_polarity = decision_default_polarity;
+        solve
+    }
+    pub fn solve(&mut self) {
+        self.generate_watch();
+        for lit in self.clause_db.assign_clauses.clone() {
+            self.add_assign(&lit, PropReason::Unit);
+        }
+        loop {
+            match self.propagate() {
+                Ok(_) => {}
+                Err(e) => {
+                    dbg!(e);
+                }
+            };
+            if !self.make_decision() {
+                break;
+            };
+        }
+    }
 }
 // impl Solver {
 //     // pub(crate) fn new(&mut self,formula:&CnfFormula){
