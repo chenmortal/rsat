@@ -28,8 +28,10 @@ fn parse_cnf<P: AsRef<Path>>(path: P) -> Result<CnfFormula> {
 fn test_cnf() {
     let path = Path::new("tests/cnfs/test.cnf");
     let cnf = parse_cnf(path).unwrap();
-    Solver::new(false).add_formula(&cnf)
-    .solve();
+    dbg!(Solver::new(false)
+        .add_formula(&cnf)
+        .solve()
+        .check_satisfied());
 }
 #[test]
 fn test_add_clause() {

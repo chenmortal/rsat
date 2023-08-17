@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::{graph::PropReason, lit::Lit, solver::Solver};
+use crate::lit::Lit;
 
 #[derive(Debug, Default)]
 pub(crate) struct Assignment {
@@ -44,15 +44,5 @@ impl Deref for Assignment {
 
     fn deref(&self) -> &Self::Target {
         &self.assignment
-    }
-}
-
-impl Solver {
-    #[inline]
-    pub(crate) fn add_assign(&mut self, lit: &Lit, prop_reason: PropReason) {
-        self.assignment.assign(lit);
-        self.prop_queue.push_back(lit);
-        self.prop_graph
-            .update_node(lit, prop_reason, self.prop_queue.current_level());
     }
 }

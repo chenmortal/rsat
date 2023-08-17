@@ -2,13 +2,13 @@ use crate::{lit::Lit, solver::ClauseRef};
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum PropReason {
     Unit,
-    Binary([Lit; 1]),
+    Binary([Lit;1]),
     Long(ClauseRef),
 }
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PropNode {
-    reason: PropReason,
-    level: usize,
+    pub(crate) reason: PropReason,
+    pub(crate) level: usize,
 }
 #[derive(Debug, Default)]
 pub(crate) struct PropGraph(Vec<PropNode>);
@@ -27,5 +27,10 @@ impl PropGraph {
         let node = &mut self.0[lit.index()];
         node.reason = reason;
         node.level = level;
+    }
+    #[inline]
+    pub(crate) fn get_node(&self, lit: &Lit) -> &PropNode {
+        debug_assert!(lit.index() < self.0.len());
+        &self.0[lit.index()]
     }
 }

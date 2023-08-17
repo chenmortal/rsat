@@ -11,6 +11,7 @@ impl Solver {
         }
         if index < self.assignment.len() {
             let decision = Lit::from_index(index, self.default_polarity);
+            dbg!(decision);
             self.prop_queue.new_decision_level();
             self.add_assign(&decision, PropReason::Unit);
             true

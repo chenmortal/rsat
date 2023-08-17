@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     cdcl::Conflict,
     graph::PropReason,
@@ -10,7 +12,7 @@ use anyhow::Result;
 pub(crate) struct PropQueue {
     trail: Vec<Lit>,
     pos: usize,
-    every_decision_level_len: Vec<usize>,
+    level_with_trail_len: Vec<usize>,
 }
 impl PropQueue {
     pub(super) fn pop_queue(&mut self) -> Option<Lit> {
@@ -24,16 +26,11 @@ impl PropQueue {
     pub(super) fn push_back(&mut self, lit: &Lit) {
         self.trail.push(*lit);
     }
-    fn clear(&mut self) {
-        self.trail.clear();
-        self.pos = 0;
-    }
     pub(crate) fn new_decision_level(&mut self) {
-        self.every_decision_level_len
-            .push(self.trail.len() - self.every_decision_level_len.last().unwrap_or(&0))
+        self.level_with_trail_len.push(self.trail.len());
     }
     pub(crate) fn current_level(&self) -> usize {
-        self.every_decision_level_len.len()
+        self.level_with_trail_len.len()
     }
 }
 impl From<&[Lit]> for PropQueue {
@@ -41,11 +38,17 @@ impl From<&[Lit]> for PropQueue {
         PropQueue {
             trail: value.to_vec(),
             pos: 0,
-            every_decision_level_len: vec![],
+            level_with_trail_len: vec![],
         }
     }
 }
+impl Deref for PropQueue {
+    type Target = Vec<Lit>;
 
+    fn deref(&self) -> &Self::Target {
+        &self.trail
+    }
+}
 impl Solver {
     pub(crate) fn propagate(&mut self) -> Result<(), Conflict> {
         while let Some(lit) = self.prop_queue.pop_queue() {
@@ -91,57 +94,36 @@ impl Solver {
                             }
                         }
                         if self.assignment.is_false(&clause[0]) {
-                            return Err(Conflict::Long(watch.cref));
+                            return Err(Conflict::Long(clause.to_vec()));
                         }
                         let first = clause[0];
                         self.add_assign(&first, PropReason::Long(watch.cref));
                     }
                 }
             }
-            'watch: for i in 0..watch_list.len() {
-                let watch = watch_list.get_mut(i).unwrap();
-                match watch.cref {
-                    ClauseRef::Binary(_) => match self.assignment.value(&watch.blocking) {
-                        Some(false) => {
-                            return Err(Conflict::Binary([!lit, watch.blocking]));
-                        }
-                        None => {
-                            self.add_assign(&watch.blocking, PropReason::Binary([!lit]));
-                        }
-                        Some(true) => {}
-                    },
-                    ClauseRef::Long(index) => {
-                        if self.assignment.is_true(&watch.blocking) {
-                            continue;
-                        }
-                        let clause = &mut self.clause_db.long_clauses[index];
 
-                        if clause[0] == !lit {
-                            clause.swap(0, 1);
-                        }
-                        let new_watch = Watch::new(watch.cref, clause[0]);
-                        if clause[0] != watch.blocking && self.assignment.is_true(&clause[0]) {
-                            *watch = new_watch;
-                            continue;
-                        }
-                        for lit_index in 2..clause.len() {
-                            if !self.assignment.is_false(&clause[lit_index]) {
-                                clause.swap(1, lit_index);
-                                self.watch_lists.add_watch(!clause[lit_index], new_watch);
-                                watch_list.remove(i);
-                                continue 'watch;
-                            }
-                        }
-                        if self.assignment.is_false(&clause[0]) {
-                            return Err(Conflict::Long(watch.cref));
-                        }
-                        let first = clause[0];
-                        self.add_assign(&first, PropReason::Long(watch.cref));
-                    }
-                }
-            }
             self.watch_lists.set_watch_list(lit, watch_list);
         }
         Ok(())
+    }
+}
+impl Solver {
+    #[inline]
+    pub(crate) fn add_assign(&mut self, lit: &Lit, prop_reason: PropReason) {
+        self.assignment.assign(lit);
+        self.prop_queue.push_back(lit);
+        self.prop_graph
+            .update_node(lit, prop_reason, self.prop_queue.current_level());
+    }
+    pub(crate) fn backtrack(&mut self, backtrack_level: usize) {
+        let new_len = self.prop_queue.level_with_trail_len[backtrack_level];
+        self.prop_queue
+            .level_with_trail_len
+            .truncate(backtrack_level);
+        self.prop_queue.pos = new_len;
+        for lit in self.prop_queue.trail[new_len..].iter() {
+            self.assignment.unassign(lit);
+        }
+        self.prop_queue.trail.truncate(new_len);
     }
 }
