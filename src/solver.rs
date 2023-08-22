@@ -48,6 +48,7 @@ impl Solver {
         self.prop_graph.resize(var_count);
         self.analyze_conflict.resize(var_count);
         self.clause_db.add_formula(formula);
+        
         self
     }
     pub fn new(decision_default_polarity: bool) -> Self {

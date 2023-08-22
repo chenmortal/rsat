@@ -1,5 +1,6 @@
 use anyhow::Result;
 use rsat::{cnf::CnfFormula, lit::Lit, solver::Solver};
+
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -26,9 +27,9 @@ fn parse_cnf<P: AsRef<Path>>(path: P) -> Result<CnfFormula> {
 }
 #[test]
 fn test_cnf() {
-    let path = Path::new("tests/cnfs/test.cnf");
+    let path = Path::new("tests/cnfs/sgen1_sat_90_0.cnf");
     let cnf = parse_cnf(path).unwrap();
-    dbg!(Solver::new(false)
+    dbg!(Solver::new(true)
         .add_formula(&cnf)
         .solve()
         .check_satisfied());

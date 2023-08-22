@@ -17,6 +17,7 @@ pub(crate) struct AnalyzeConflict {
     seen: Vec<bool>,
     to_search_node: usize,
     learnt_clause: Vec<Lit>,
+    to_clean: Vec<Lit>,
 }
 
 impl AnalyzeConflict {
@@ -41,6 +42,8 @@ impl Solver {
         let to_search_node = &mut self.analyze_conflict.to_search_node;
         *to_search_node = 0;
         let learnt_clause = &mut self.analyze_conflict.learnt_clause;
+        let to_clean = &mut self.analyze_conflict.to_clean;
+        to_clean.clear();
         learnt_clause.clear();
         AnalyzeConflict::analyze_clause(
             &self.prop_graph,
@@ -48,6 +51,7 @@ impl Solver {
             clause,
             seen,
             to_search_node,
+            to_clean,
             learnt_clause,
         );
         for lit in self.prop_queue.iter().rev() {
@@ -73,11 +77,18 @@ impl Solver {
                         clause,
                         seen,
                         to_search_node,
+                        to_clean,
                         learnt_clause,
                     );
                 }
+                if *to_search_node == 0 {
+                    print!("hha");
+                }
                 *to_search_node -= 1;
             }
+        }
+        for ele in to_clean {
+            seen[ele.index()] = false;
         }
         let mut backtrack = 0;
         if learnt_clause.len() >= 2 {
@@ -101,6 +112,7 @@ impl AnalyzeConflict {
         clause: &[Lit],
         seen: &mut Vec<bool>,
         to_search_node: &mut usize,
+        to_clean: &mut Vec<Lit>,
         learnt_clause: &mut Vec<Lit>,
     ) {
         for lit in clause {
@@ -111,6 +123,7 @@ impl AnalyzeConflict {
                     *to_search_node += 1;
                 } else {
                     learnt_clause.push(*lit);
+                    to_clean.push(*lit);
                 }
             }
         }
